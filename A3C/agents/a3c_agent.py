@@ -230,7 +230,6 @@ class A3CAgent(object):
     self.saver.save(self.sess, path+'/model.pkl', count)
 
   def load_model(self, path):
-    path = '/home/faust/Documents/starcraft-ai/A3C/model/model.pkl-15001.data-00000-of-00001'
     ckpt = tf.train.get_checkpoint_state(path)
     self.saver.restore(self.sess, ckpt.model_checkpoint_path)
     return int(ckpt.model_checkpoint_path.split('-')[-1])

@@ -38,7 +38,7 @@ flags.DEFINE_integer("minimap_resolution", 64, "Resolution for minimap feature l
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 
 flags.DEFINE_string("agent", "agents.a3c_agent.A3CAgent", "Which agent to run.")
-flags.DEFINE_string("net", "fcn", "atari or fcn.")
+flags.DEFINE_string("net", "fcn", "atari, fcn, or innovationdx.")
 flags.DEFINE_enum("agent_race", None, sc2_env.races.keys(), "Agent's race.")
 flags.DEFINE_enum("bot_race", None, sc2_env.races.keys(), "Bot's race.")
 flags.DEFINE_enum("difficulty", None, sc2_env.difficulties.keys(), "Bot's strength.")
@@ -46,7 +46,7 @@ flags.DEFINE_integer("max_agent_steps", 60, "Total agent steps.")
 
 flags.DEFINE_bool("profile", False, "Whether to turn on code profiling.")
 flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
-flags.DEFINE_integer("parallel", 16, "How many instances to run in parallel.")
+flags.DEFINE_integer("parallel", 2, "How many instances to run in parallel.")
 flags.DEFINE_bool("save_replay", False, "Whether to save a replay at the end.")
 
 FLAGS(sys.argv)
@@ -69,7 +69,7 @@ if not os.path.exists(SNAPSHOT):
 
 def run_thread(agent, map_name, visualize):
     with sc2_env.SC2Env(
-      map_name='SentryDefense',
+      map_name=map_name,
       agent_race=FLAGS.agent_race,
       bot_race=FLAGS.bot_race,
       difficulty=FLAGS.difficulty,
