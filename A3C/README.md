@@ -1,5 +1,4 @@
 # PySC2 agents
-This is a simple implementation of DeepMind's PySC2 RL agents. In this project, the agents are defined according to the original [paper](https://deepmind.com/documents/110/sc2le.pdf), which use all feature maps and structured information to predict both actions and arguments via an A3C algorithm.
 
 
 ## Requirements
@@ -16,5 +15,7 @@ Train a model by yourself:
 python -m main --map=MoveToBeacon
 ```
 
+#Acknowledgements
+The A3C implementation is from [Xiaowei Hu](https://github.com/xhujoy/pysc2-agents). I am in the process of adding a recurrent based model to allow for memory. 
 
 *Licensed under The MIT License.*

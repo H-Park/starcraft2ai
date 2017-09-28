@@ -26,6 +26,7 @@ flags.DEFINE_bool("continuation", False, "Continuously training.")
 flags.DEFINE_float("learning_rate", 5e-4, "Learning rate for training.")
 flags.DEFINE_float("discount", 0.99, "Discount rate for future rewards.")
 flags.DEFINE_integer("max_steps", 1e5, "Total steps for training.")
+flags.DEFINE_integer("recurrent_depth", 3, "How many previous frames to consider")
 flags.DEFINE_integer("snapshot_step", 1e3, "Step for snapshot.")
 flags.DEFINE_string("snapshot_path", "./snapshot/", "Path for snapshot.")
 flags.DEFINE_string("log_path", "./log/", "Path for log.")
@@ -38,7 +39,7 @@ flags.DEFINE_integer("minimap_resolution", 64, "Resolution for minimap feature l
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 
 flags.DEFINE_string("agent", "agents.a3c_agent.A3CAgent", "Which agent to run.")
-flags.DEFINE_string("net", "fcn", "atari, fcn, or innovationdx.")
+flags.DEFINE_string("net", "innovationdx", "atari, fcn, or innovationdx.")
 flags.DEFINE_enum("agent_race", None, sc2_env.races.keys(), "Agent's race.")
 flags.DEFINE_enum("bot_race", None, sc2_env.races.keys(), "Bot's race.")
 flags.DEFINE_enum("difficulty", None, sc2_env.difficulties.keys(), "Bot's strength.")
@@ -46,7 +47,7 @@ flags.DEFINE_integer("max_agent_steps", 60, "Total agent steps.")
 
 flags.DEFINE_bool("profile", False, "Whether to turn on code profiling.")
 flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
-flags.DEFINE_integer("parallel", 2, "How many instances to run in parallel.")
+flags.DEFINE_integer("parallel", 1, "How many instances to run in parallel.")
 flags.DEFINE_bool("save_replay", False, "Whether to save a replay at the end.")
 
 FLAGS(sys.argv)
@@ -81,7 +82,7 @@ def run_thread(agent, map_name, visualize):
 
       # Only for a single player!
       replay_buffer = []
-      for recorder, is_done in run_loop([agent], env, MAX_AGENT_STEPS):
+      for recorder, is_done in run_loop(agent, env, MAX_AGENT_STEPS):
         if FLAGS.training:
           replay_buffer.append(recorder)
           if is_done:
@@ -124,7 +125,7 @@ def _main(unused_argv):
   agents = []
   for i in range(PARALLEL):
     agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution)
-    agent.build_model(i > 0, DEVICE[i % len(DEVICE)], FLAGS.net)
+    agent.build_model(i > 0, FLAGS.recurrent_depth, DEVICE[i % len(DEVICE)], FLAGS.net)
     agents.append(agent)
 
   config = tf.ConfigProto(allow_soft_placement=True)

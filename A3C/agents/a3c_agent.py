@@ -2,11 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import numpy as np
 import tensorflow as tf
 from pysc2.lib import actions
-from pysc2.lib import features
 
 from agents.network import build_net
 import utils as U
@@ -24,6 +22,9 @@ class A3CAgent(object):
     self.ssize = ssize
     self.isize = len(actions.FUNCTIONS)
 
+    self.previous_minimap = []
+    self.previous_screen = []
+    self.previous_info = []
 
   def setup(self, sess, summary_writer):
     self.sess = sess
@@ -40,16 +41,20 @@ class A3CAgent(object):
     self.epsilon = [0.05, 0.2]
 
 
-  def build_model(self, reuse, dev, ntype):
+  def build_model(self, reuse, recurrent_depth, dev, ntype):
     with tf.variable_scope(self.name) and tf.device(dev):
       if reuse:
         tf.get_variable_scope().reuse_variables()
         assert tf.get_variable_scope().reuse
 
       # Set inputs of networks
-      self.minimap = tf.placeholder(tf.float32, [None, U.minimap_channel(), self.msize, self.msize], name='minimap')
-      self.screen = tf.placeholder(tf.float32, [None, U.screen_channel(), self.ssize, self.ssize], name='screen')
-      self.info = tf.placeholder(tf.float32, [None, self.isize], name='info')
+      self.minimap = tf.placeholder(tf.float32, [None, recurrent_depth, U.minimap_channel(), self.msize, self.msize], name='minimap')
+      self.screen = tf.placeholder(tf.float32, [None, recurrent_depth, U.screen_channel(), self.ssize, self.ssize], name='screen')
+      self.info = tf.placeholder(tf.float32, [None, recurrent_depth, self.isize], name='info')
+
+      self.previous_minimap = np.zeros([recurrent_depth, U.minimap_channel(), self.msize, self.msize])
+      self.previous_screen = np.zeros([recurrent_depth, U.screen_channel(), self.ssize, self.ssize])
+      self.previous_info = np.zeros([recurrent_depth, self.isize])
 
       # Build networks
       net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, len(actions.FUNCTIONS), ntype)
@@ -91,6 +96,8 @@ class A3CAgent(object):
       grads = opt.compute_gradients(loss)
       cliped_grad = []
       for grad, var in grads:
+        if grad is None:
+          continue
         self.summary.append(tf.summary.histogram(var.op.name, var))
         self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
         grad = tf.clip_by_norm(grad, 10.0)
@@ -106,13 +113,18 @@ class A3CAgent(object):
     minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
     screen = np.array(obs.observation['screen'], dtype=np.float32)
     screen = np.expand_dims(U.preprocess_screen(screen), axis=0)
+
     # TODO: only use available actions
     info = np.zeros([1, self.isize], dtype=np.float32)
     info[0, obs.observation['available_actions']] = 1
 
-    feed = {self.minimap: minimap,
-            self.screen: screen,
-            self.info: info}
+    self.previous_minimap[0] = minimap
+    self.previous_screen[0] = screen
+    self.previous_info[0] = info
+
+    feed = {self.minimap: self.previous_minimap,
+            self.screen: self.previous_screen,
+            self.info: self.previous_info}
     non_spatial_action, spatial_action = self.sess.run(
       [self.non_spatial_action, self.spatial_action],
       feed_dict=feed)
@@ -160,9 +172,13 @@ class A3CAgent(object):
       info = np.zeros([1, self.isize], dtype=np.float32)
       info[0, obs.observation['available_actions']] = 1
 
-      feed = {self.minimap: minimap,
-              self.screen: screen,
-              self.info: info}
+      self.previous_minimap[0] = minimap
+      self.previous_screen[0] = screen
+      self.previous_info[0] = info
+
+      feed = {self.minimap: self.previous_minimap,
+              self.screen: self.previous_screen,
+              self.info: self.previous_info}
       R = self.sess.run(self.value, feed_dict=feed)[0]
 
     # Compute targets and masks
@@ -228,6 +244,7 @@ class A3CAgent(object):
 
   def save_model(self, path, count):
     self.saver.save(self.sess, path+'/model.pkl', count)
+
 
   def load_model(self, path):
     ckpt = tf.train.get_checkpoint_state(path)
