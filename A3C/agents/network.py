@@ -51,11 +51,12 @@ def build_innovationdx(minimap, screen, info, num_action):
                                    kernel_size=1,
                                    stride=1,
                                    activation_fn=tf.nn.softmax,
-                                   scope='spatial_action')
+                                   scope='spatial_action_feat')
     spatial_action_flatten = layers.flatten(spatial_action_feat)
     spatial_action = layers.fully_connected(spatial_action_flatten,
                                             num_outputs=4096,
-                                            activation_fn=tf.nn.softmax)
+                                            activation_fn=tf.nn.softmax,
+                                            scope='spatial_action')
 
     # Compute non spatial actions and value
     # feat_fc = tf.concat([layers.flatten(mconv2), layers.flatten(sconv2), info_fc], axis=2)

@@ -19,6 +19,7 @@ def run_loop(agent, env, max_frames=0):
         last_timesteps = timesteps
         actions = [agent.step(timestep) for timestep in timesteps]
         timesteps = env.step(actions)
+        time.sleep(.066)
         # Only for a single player!
         is_done = (num_frames >= max_frames) or timesteps[0].last()
         yield [last_timesteps[0], actions[0], timesteps[0]], is_done

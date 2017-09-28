@@ -22,6 +22,10 @@ class A3CAgent(object):
     self.ssize = ssize
     self.isize = len(actions.FUNCTIONS)
 
+    self.minimaps = []
+    self.screens = []
+    self.infos = []
+
   def setup(self, sess, summary_writer):
     self.sess = sess
     self.summary_writer = summary_writer
@@ -35,6 +39,11 @@ class A3CAgent(object):
   def reset(self):
     # Epsilon schedule
     self.epsilon = [0.05, 0.2]
+
+    #clear out memory
+    self.minimaps = []
+    self.screens = []
+    self.infos = []
 
   def build_model(self, reuse, recurrent_depth, dev, ntype):
     self.recurrent_depth = recurrent_depth
@@ -112,9 +121,29 @@ class A3CAgent(object):
     info = np.zeros([1, self.isize], dtype=np.float32)
     info[0, obs.observation['available_actions']] = 1
 
-    self.previous_minimap[0] = minimap
-    self.previous_screen[0] = screen
-    self.previous_info[0] = info
+    #TODO: MAKE THIS A FUNCTION / CLEAN IT UP.
+    self.minimaps.append(minimap)
+    self.screens.append(screen)
+    self.infos.append(info)
+
+    self.previous_minimap[0][0] = self.minimaps[-1]
+    if len(self.minimaps) > 1:
+      self.previous_minimap[0][1] = self.minimaps[-2]
+      if len(self.minimaps) > 2:
+        self.previous_minimap[0][2] = self.minimaps[-3]
+
+    self.previous_screen[0][0] = self.screens[-1]
+    if len(self.screens) > 1:
+      self.previous_screen[0][1] = self.screens[-2]
+      if len(self.screens) > 2:
+        self.previous_screen[0][2] = self.screens[-3]
+
+    self.previous_info[0][0] = self.infos[-1]
+    if len(self.infos) > 1:
+      self.previous_info[0][1] = self.infos[-2]
+      if len(self.infos) > 2:
+        self.previous_info[0][2] = self.infos[-3]
+
 
     feed = {self.minimap: self.previous_minimap,
             self.screen: self.previous_screen,
@@ -188,6 +217,10 @@ class A3CAgent(object):
     valid_non_spatial_action = np.zeros([len(rbs), len(actions.FUNCTIONS)], dtype=np.float32)
     non_spatial_action_selected = np.zeros([len(rbs), len(actions.FUNCTIONS)], dtype=np.float32)
 
+    #TODO: CLEAN THIS UP
+    minimaps_tmp = []
+    screens_tmp = []
+    info_tmp = []
     rbs.reverse()
     for i, [obs, action, next_obs] in enumerate(rbs):
       minimap = np.array(obs.observation['minimap'], dtype=np.float32)
@@ -197,14 +230,32 @@ class A3CAgent(object):
       info = np.zeros([1, self.isize], dtype=np.float32)
       info[0, obs.observation['available_actions']] = 1
 
+      minimaps_tmp.append(minimap)
+      screens_tmp.append(screen)
+      info_tmp.append(info)
+
       previous_minimap_tmp = np.zeros([1, self.recurrent_depth, U.minimap_channel(), self.msize, self.msize])
       previous_screen_tmp = np.zeros([1, self.recurrent_depth, U.screen_channel(), self.ssize, self.ssize])
       previous_info_tmp = np.zeros([1, self.recurrent_depth, self.isize])
 
-      previous_minimap_tmp[0] = minimap
-      previous_screen_tmp[0] = screen
-      previous_info_tmp[0] = info
-      
+      previous_minimap_tmp[0][0] = minimaps_tmp[-1]
+      if len(minimaps_tmp) > 1:
+        previous_minimap_tmp[0][1] = minimaps_tmp[-2]
+        if len(minimaps_tmp) > 2:
+          previous_minimap_tmp[0][2] = minimaps_tmp[-3]
+
+      previous_screen_tmp[0][0] = screens_tmp[-1]
+      if len(screens_tmp) > 1:
+        previous_screen_tmp[0][1] = screens_tmp[-2]
+        if len(screens_tmp) > 2:
+          previous_screen_tmp[0][2] = screens_tmp[-3]
+
+      previous_info_tmp[0][0] = info_tmp[-1]
+      if len(infos) > 1:
+        previous_info_tmp[0][1] = info_tmp[-2]
+        if len(infos) > 2:
+          previous_info_tmp[0][2] = info_tmp[-3]
+
       minimaps.append(previous_minimap_tmp)
       screens.append(previous_screen_tmp)
       infos.append(previous_info_tmp)
