@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import time
 
-#Taken straight from pysc2's repo
+# Taken straight from pysc2's repo
 def run_loop(agent, env, max_frames=0):
   """A run loop to have agents and an environment interact."""
   start_time = time.time()

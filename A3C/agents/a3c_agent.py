@@ -22,10 +22,6 @@ class A3CAgent(object):
     self.ssize = ssize
     self.isize = len(actions.FUNCTIONS)
 
-    self.previous_minimap = []
-    self.previous_screen = []
-    self.previous_info = []
-
   def setup(self, sess, summary_writer):
     self.sess = sess
     self.summary_writer = summary_writer
@@ -40,8 +36,8 @@ class A3CAgent(object):
     # Epsilon schedule
     self.epsilon = [0.05, 0.2]
 
-
   def build_model(self, reuse, recurrent_depth, dev, ntype):
+    self.recurrent_depth = recurrent_depth
     with tf.variable_scope(self.name) and tf.device(dev):
       if reuse:
         tf.get_variable_scope().reuse_variables()
@@ -52,9 +48,9 @@ class A3CAgent(object):
       self.screen = tf.placeholder(tf.float32, [None, recurrent_depth, U.screen_channel(), self.ssize, self.ssize], name='screen')
       self.info = tf.placeholder(tf.float32, [None, recurrent_depth, self.isize], name='info')
 
-      self.previous_minimap = np.zeros([recurrent_depth, U.minimap_channel(), self.msize, self.msize])
-      self.previous_screen = np.zeros([recurrent_depth, U.screen_channel(), self.ssize, self.ssize])
-      self.previous_info = np.zeros([recurrent_depth, self.isize])
+      self.previous_minimap = np.zeros([1, recurrent_depth, U.minimap_channel(), self.msize, self.msize])
+      self.previous_screen = np.zeros([1, recurrent_depth, U.screen_channel(), self.ssize, self.ssize])
+      self.previous_info = np.zeros([1, recurrent_depth, self.isize])
 
       # Build networks
       net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, len(actions.FUNCTIONS), ntype)
@@ -96,8 +92,6 @@ class A3CAgent(object):
       grads = opt.compute_gradients(loss)
       cliped_grad = []
       for grad, var in grads:
-        if grad is None:
-          continue
         self.summary.append(tf.summary.histogram(var.op.name, var))
         self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
         grad = tf.clip_by_norm(grad, 10.0)
@@ -203,9 +197,17 @@ class A3CAgent(object):
       info = np.zeros([1, self.isize], dtype=np.float32)
       info[0, obs.observation['available_actions']] = 1
 
-      minimaps.append(minimap)
-      screens.append(screen)
-      infos.append(info)
+      previous_minimap_tmp = np.zeros([1, self.recurrent_depth, U.minimap_channel(), self.msize, self.msize])
+      previous_screen_tmp = np.zeros([1, self.recurrent_depth, U.screen_channel(), self.ssize, self.ssize])
+      previous_info_tmp = np.zeros([1, self.recurrent_depth, self.isize])
+
+      previous_minimap_tmp[0] = minimap
+      previous_screen_tmp[0] = screen
+      previous_info_tmp[0] = info
+      
+      minimaps.append(previous_minimap_tmp)
+      screens.append(previous_screen_tmp)
+      infos.append(previous_info_tmp)
 
       reward = obs.reward
       act_id = action.function
