@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
+import tensorflow.contrib.keras.api.keras.layers as keras
 
 
 def build_net(minimap, screen, info, msize, ssize, num_action, ntype):
@@ -11,69 +12,67 @@ def build_net(minimap, screen, info, msize, ssize, num_action, ntype):
         return build_atari(minimap, screen, info, msize, ssize, num_action)
     elif ntype == 'fcn':
         return build_fcn(minimap, screen, info, msize, ssize, num_action)
-    elif ntype == 'innovationdx':
-        return build_innovationdx(minimap, screen, info, num_action)
+    elif ntype == 'fcLSTM':
+        return build_FullyConvLSTM(minimap, screen, info, ssize, num_action)
     else:
         raise 'FLAGS.net must be atari, fcn, or innovationd'
 
 
-def build_innovationdx(minimap, screen, info, num_action):
-    # Extract features
-    mconv1 = layers.conv3d(minimap,
-                           num_outputs=16,
-                           kernel_size=5,
-                           stride=1,
-                           scope='mconv1')
-    mconv2 = layers.conv3d(mconv1,
-                           num_outputs=32,
-                           kernel_size=3,
-                           stride=1,
-                           scope='mconv2')
-    sconv1 = layers.conv3d(screen,
-                           num_outputs=16,
-                           kernel_size=5,
-                           stride=1,
-                           scope='sconv1')
-    sconv2 = layers.conv3d(sconv1,
-                           num_outputs=32,
-                           kernel_size=3,
-                           stride=1,
-                           scope='sconv2')
-    # info_fc = layers.fully_connected(layers.flatten(info),
-    #                                  num_outputs=256,
-    #                                  activation_fn=tf.tanh,
-    #                                  scope='info_fc')
+def build_FullyConvLSTM(minimap, screen, info, ssize, num_action):
+    def build_fcn(minimap, screen, info, msize, ssize, num_action):
+        # Extract features, while preserving the dimensions
+        mconv1 = layers.conv2d(tf.transpose(minimap, [0, 2, 3, 1]),
+                               num_outputs=16,
+                               kernel_size=5,
+                               stride=1,
+                               padding="SAME",
+                               scope='mconv1')
+        mconv2 = layers.conv2d(mconv1,
+                               num_outputs=32,
+                               kernel_size=3,
+                               stride=1,
+                               padding="SAME",
+                               scope='mconv2')
+        sconv1 = layers.conv2d(tf.transpose(screen, [0, 2, 3, 1]),
+                               num_outputs=16,
+                               kernel_size=5,
+                               stride=1,
+                               padding="SAME",
+                               scope='sconv1')
+        sconv2 = layers.conv2d(sconv1,
+                               num_outputs=32,
+                               kernel_size=3,
+                               stride=1,
+                               padding="SAME",
+                               scope='sconv2')
 
-    # Compute spatial actions
-    feat_conv = tf.concat([mconv2, sconv2], axis=2)
-    spatial_action_feat = layers.conv3d(feat_conv,
-                                   num_outputs=1,
-                                   kernel_size=1,
-                                   stride=1,
-                                   activation_fn=tf.nn.softmax,
-                                   scope='spatial_action_feat')
-    spatial_action_flatten = layers.flatten(spatial_action_feat)
-    spatial_action = layers.fully_connected(spatial_action_flatten,
-                                            num_outputs=4096,
-                                            activation_fn=tf.nn.softmax,
-                                            scope='spatial_action')
+        # Create the state representation by concatenating on the channel axis
+        spatial_state_representation = tf.concat([mconv2, sconv2], axis=3)
 
-    # Compute non spatial actions and value
-    # feat_fc = tf.concat([layers.flatten(mconv2), layers.flatten(sconv2), info_fc], axis=2)
-    feat_fc = tf.concat([layers.flatten(mconv2), layers.flatten(sconv2)], axis=1)
-    feat_fc = layers.fully_connected(feat_fc,
-                                     num_outputs=256,
-                                     activation_fn=tf.nn.relu,
-                                     scope='feat_fc')
-    non_spatial_action = layers.fully_connected(feat_fc,
-                                                num_outputs=num_action,
-                                                activation_fn=tf.nn.softmax,
-                                                scope='non_spatial_action')
-    value = tf.reshape(layers.fully_connected(feat_fc,
+        # Preform another convolution, but preserve the dimensions by using params (1, 1, 1)
+        spatial_action_policy = layers.conv2d(spatial_state_representation,
                                               num_outputs=1,
+                                              kernel_size=1,
+                                              stride=1,
                                               activation_fn=None,
-                                              scope='value'), [-1])
-    return spatial_action, non_spatial_action, value
+                                              scope='spatial_feat')
+        spatial_action = tf.nn.softmax(layers.flatten(spatial_action_policy))
+
+        full_state_representation = tf.concat([layers.flatten(spatial_state_representation), info], axis=1)
+
+        feat_fc = layers.fully_connected(full_state_representation,
+                                         num_outputs=256,
+                                         activation_fn=tf.nn.relu,
+                                         scope='feat_fc')
+        non_spatial_action = layers.fully_connected(feat_fc,
+                                                    num_outputs=num_action,
+                                                    activation_fn=tf.nn.softmax,
+                                                    scope='non_spatial_action')
+        value = layers.fully_connected(feat_fc,
+                                       num_outputs=1,
+                                       activation_fn=None,
+                                       scope='value')
+        return spatial_action, non_spatial_action, value
 
 
 def build_atari(minimap, screen, info, msize, ssize, num_action):
@@ -137,45 +136,47 @@ def build_atari(minimap, screen, info, msize, ssize, num_action):
 
 
 def build_fcn(minimap, screen, info, msize, ssize, num_action):
-    # Extract features
+    # Extract features, while preserving the dimensions
     mconv1 = layers.conv2d(tf.transpose(minimap, [0, 2, 3, 1]),
                            num_outputs=16,
                            kernel_size=5,
                            stride=1,
+                           padding="SAME",
                            scope='mconv1')
     mconv2 = layers.conv2d(mconv1,
                            num_outputs=32,
                            kernel_size=3,
                            stride=1,
+                           padding="SAME",
                            scope='mconv2')
     sconv1 = layers.conv2d(tf.transpose(screen, [0, 2, 3, 1]),
                            num_outputs=16,
                            kernel_size=5,
                            stride=1,
+                           padding="SAME",
                            scope='sconv1')
     sconv2 = layers.conv2d(sconv1,
                            num_outputs=32,
                            kernel_size=3,
                            stride=1,
+                           padding="SAME",
                            scope='sconv2')
-    info_fc = layers.fully_connected(layers.flatten(info),
-                                     num_outputs=256,
-                                     activation_fn=tf.tanh,
-                                     scope='info_fc')
 
-    # Compute spatial actions
-    feat_conv = tf.concat([mconv2, sconv2], axis=3)
-    spatial_action = layers.conv2d(feat_conv,
-                                   num_outputs=1,
-                                   kernel_size=1,
-                                   stride=1,
-                                   activation_fn=None,
-                                   scope='spatial_action')
-    spatial_action = tf.nn.softmax(layers.flatten(spatial_action))
+    # Create the state representation by concatenating on the channel axis
+    spatial_state_representation = tf.concat([mconv2, sconv2], axis=3)
 
-    # Compute non spatial actions and value
-    feat_fc = tf.concat([layers.flatten(mconv2), layers.flatten(sconv2), info_fc], axis=1)
-    feat_fc = layers.fully_connected(feat_fc,
+    # Preform another convolution, but preserve the dimensions by using params (1, 1, 1)
+    spatial_action_policy = layers.conv2d(spatial_state_representation,
+                                          num_outputs=1,
+                                          kernel_size=1,
+                                          stride=1,
+                                          activation_fn=None,
+                                          scope='spatial_feat')
+    spatial_action = tf.nn.softmax(layers.flatten(spatial_action_policy))
+
+    full_state_representation = tf.concat([layers.flatten(spatial_state_representation), info], axis=1)
+
+    feat_fc = layers.fully_connected(full_state_representation,
                                      num_outputs=256,
                                      activation_fn=tf.nn.relu,
                                      scope='feat_fc')
@@ -183,8 +184,8 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                                                 num_outputs=num_action,
                                                 activation_fn=tf.nn.softmax,
                                                 scope='non_spatial_action')
-    value = tf.reshape(layers.fully_connected(feat_fc,
-                                              num_outputs=1,
-                                              activation_fn=None,
-                                              scope='value'), [-1])
+    value = layers.fully_connected(feat_fc,
+                                   num_outputs=1,
+                                   activation_fn=None,
+                                   scope='value')
     return spatial_action, non_spatial_action, value
