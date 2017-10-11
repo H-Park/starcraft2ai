@@ -162,7 +162,7 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                            scope='sconv2')
 
     # Create the state representation by concatenating on the channel axis
-    state_representation = tf.concat([mconv2, sconv2], axis=3)
+    state_representation = tf.concat([mconv2, sconv2, tf.reshape(info, [1, ssize, ssize, 1])], axis=3)
 
     # Preform another convolution, but preserve the dimensions by using params (1, 1, 1)
     spatial_action_policy = layers.conv2d(state_representation,
@@ -173,9 +173,7 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                                           scope='spatial_feat')
     spatial_action = tf.nn.softmax(layers.flatten(spatial_action_policy))
 
-    full_state_representation = tf.concat([layers.flatten(state_representation), info], axis=1)
-
-    feat_fc = layers.fully_connected(full_state_representation,
+    feat_fc = layers.fully_connected(state_representation,
                                      num_outputs=256,
                                      activation_fn=tf.nn.relu,
                                      scope='feat_fc')
