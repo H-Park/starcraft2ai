@@ -19,7 +19,13 @@ def build_net(minimap, screen, info, msize, ssize, num_action, ntype):
 
 def build_innovationdx(minimap, screen, info, ssize, num_action):
     # Extract features, while preserving the dimensions
-    mconv1 = layers.conv2d(tf.transpose(minimap, [0, 2, 3, 1]),
+    m_pp = layers.conv2d(tf.transpose(minimap, [0, 2, 3, 1]),
+                           num_outputs=17,
+                           kernel_size=1,
+                           stride=1,
+                           padding="SAME",
+                           scope='m_pp')
+    mconv1 = layers.conv2d(m_pp,
                            num_outputs=16,
                            kernel_size=5,
                            stride=1,
@@ -31,7 +37,13 @@ def build_innovationdx(minimap, screen, info, ssize, num_action):
                            stride=1,
                            padding="SAME",
                            scope='mconv2')
-    sconv1 = layers.conv2d(tf.transpose(screen, [0, 2, 3, 1]),
+    s_pp =  layers.conv2d(tf.transpose(screen, [0, 2, 3, 1]),
+                           num_outputs=23,
+                           kernel_size=1,
+                           stride=1,
+                           padding="SAME",
+                           scope='s_pp')
+    sconv1 = layers.conv2d(s_pp,
                            num_outputs=16,
                            kernel_size=5,
                            stride=1,
@@ -45,7 +57,7 @@ def build_innovationdx(minimap, screen, info, ssize, num_action):
                            scope='sconv2')
 
     # Create the state representation by concatenating on the channel axis
-    state_representation = tf.concat([mconv2, sconv2, tf.reshape(info, [1, ssize, ssize, 1])], axis=3)
+    state_representation = tf.concat([mconv2, sconv2, tf.reshape(info, [-1, ssize, ssize, 1])], axis=3)
 
     # Preform another convolution, but preserve the dimensions by using params (1, 1, 1)
     spatial_action_policy = layers.conv2d(state_representation,
@@ -56,15 +68,15 @@ def build_innovationdx(minimap, screen, info, ssize, num_action):
                                           scope='spatial_feat')
     spatial_action = tf.nn.softmax(layers.flatten(spatial_action_policy))
 
-    feat_fc = layers.fully_connected(state_representation,
+    feat_fc = layers.fully_connected(layers.flatten(state_representation),
                                      num_outputs=256,
                                      activation_fn=tf.nn.relu,
                                      scope='feat_fc')
-    non_spatial_action = layers.fully_connected(layers.flatten(feat_fc),
+    non_spatial_action = layers.fully_connected(feat_fc,
                                                 num_outputs=num_action,
                                                 activation_fn=tf.nn.softmax,
                                                 scope='non_spatial_action')
-    value = layers.fully_connected(layers.flatten(feat_fc),
+    value = layers.fully_connected(feat_fc,
                                    num_outputs=1,
                                    activation_fn=None,
                                    scope='value')
