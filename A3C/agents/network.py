@@ -4,10 +4,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
-import tensorflow.contrib.keras.api.keras.layers as keras
-import tensorflow.contrib.keras.api.keras.activations as activations
-from tensorflow.contrib.keras.api.keras.models import Sequential, Model
-from keras.layers.convolutional_recurrent import ConvLSTM2D
 
 
 def build_net(minimap, screen, info, msize, ssize, num_action, ntype):
@@ -64,15 +60,17 @@ def build_innovationdx(minimap, screen, info, ssize, num_action):
                                      num_outputs=256,
                                      activation_fn=tf.nn.relu,
                                      scope='feat_fc')
-    non_spatial_action = layers.fully_connected(feat_fc,
+    non_spatial_action = layers.fully_connected(layers.flatten(feat_fc),
                                                 num_outputs=num_action,
                                                 activation_fn=tf.nn.softmax,
                                                 scope='non_spatial_action')
-    value = layers.fully_connected(feat_fc,
+    value = layers.fully_connected(layers.flatten(feat_fc),
                                    num_outputs=1,
                                    activation_fn=None,
                                    scope='value')
+
     return spatial_action, non_spatial_action, value
+
 
 def build_atari(minimap, screen, info, msize, ssize, num_action):
     # Extract features
@@ -162,7 +160,7 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                            scope='sconv2')
 
     # Create the state representation by concatenating on the channel axis
-    state_representation = tf.concat([mconv2, sconv2, tf.reshape(info, [1, ssize, ssize, 1])], axis=3)
+    state_representation = tf.concat([mconv2, sconv2, tf.reshape(info, [-1, ssize, ssize, 1])], axis=3)
 
     # Preform another convolution, but preserve the dimensions by using params (1, 1, 1)
     spatial_action_policy = layers.conv2d(state_representation,
@@ -173,7 +171,7 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                                           scope='spatial_feat')
     spatial_action = tf.nn.softmax(layers.flatten(spatial_action_policy))
 
-    feat_fc = layers.fully_connected(state_representation,
+    feat_fc = layers.fully_connected(layers.flatten(state_representation),
                                      num_outputs=256,
                                      activation_fn=tf.nn.relu,
                                      scope='feat_fc')
@@ -185,4 +183,5 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                                    num_outputs=1,
                                    activation_fn=None,
                                    scope='value')
+
     return spatial_action, non_spatial_action, value
