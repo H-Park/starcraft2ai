@@ -92,6 +92,8 @@ class A3CAgent(object):
             grads = opt.compute_gradients(loss)
             cliped_grad = []
             for grad, var in grads:
+                if grad is None:
+                    continue
                 self.summary.append(tf.summary.histogram(var.op.name, var))
                 self.summary.append(tf.summary.histogram(var.op.name + '/grad', grad))
                 grad = tf.clip_by_norm(grad, 10.0)
@@ -273,6 +275,7 @@ class A3CAgent(object):
                 self.non_spatial_action_selected: non_spatial_action_selected,
                 self.learning_rate: lr}
         _, summary = self.sess.run([self.train_op, self.summary_op], feed_dict=feed)
+        self.summary_writer.add_graph(self.sess.graph)
         self.summary_writer.add_summary(summary, cter)
 
     def save_model(self, path, count):
