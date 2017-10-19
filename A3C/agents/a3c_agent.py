@@ -34,7 +34,7 @@ class A3CAgent(object):
 
     def reset(self):
         # Epsilon schedule
-        self.epsilon = [0.05, 0.2]
+        self.epsilon = [0.3, 0.3]
 
     def build_model(self, reuse, dev, ntype):
         with tf.variable_scope(self.name) and tf.device(dev):
@@ -159,8 +159,9 @@ class A3CAgent(object):
         for arg in actions.FUNCTIONS[act_id].args:
             if arg.name in ('screen', 'minimap', 'screen2'):
                 act_args.append([target[1], target[0]])
+                pass
             else:
-                act_args.append([0])  # TODO: Be careful
+                act_args.append([0])  # TODO: Be carefue
         return actions.FunctionCall(act_id, act_args)
 
     def update(self, rbs, disc, lr, cter):
@@ -243,7 +244,7 @@ class A3CAgent(object):
             screens.append(screen)
             infos.append(info)
 
-            reward = obs.reward
+            reward = int(obs.observation["score_cumulative"][0])
             act_id = action.function
             act_args = action.arguments
 
