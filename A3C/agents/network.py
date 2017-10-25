@@ -169,7 +169,13 @@ def build_atari(minimap, screen, info, msize, ssize, num_action):
 
 def build_fcn(minimap, screen, info, msize, ssize, num_action):
     # Extract features, while preserving the dimensions
-    mconv1 = layers.conv2d(tf.transpose(minimap, [0, 2, 3, 1]),
+    m_pp = layers.conv2d(tf.transpose(minimap, [0, 2, 3, 1]),
+                               num_outputs=1,
+                               kernel_size=1,
+                               stride=1,
+                               padding="SAME",
+                               scope="m_pp")
+    mconv1 = layers.conv2d(m_pp,
                            num_outputs=16,
                            kernel_size=5,
                            stride=1,
@@ -181,7 +187,13 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                            stride=1,
                            padding="SAME",
                            scope='mconv2')
-    sconv1 = layers.conv2d(tf.transpose(screen, [0, 2, 3, 1]),
+    s_pp = layers.conv2d(tf.transpose(screen, [0, 2, 3, 1]),
+                               num_outputs=1,
+                               kernel_size=1,
+                               stride=1,
+                               padding="SAME",
+                               scope="s_pp")
+    sconv1 = layers.conv2d(s_pp,
                            num_outputs=16,
                            kernel_size=5,
                            stride=1,
@@ -195,9 +207,8 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                            scope='sconv2')
 
     # Create the state representation by concatenating on the channel axis
-    state_representation = tf.concat([mconv2, sconv2, tf.reshape(info, [-1, ssize, ssize, 1, 32])], axis=3)
+    state_representation = tf.concat([mconv2, sconv2, tf.reshape(info, [-1, ssize, ssize, 1])], axis=3)
 
-    print(state_representation)
     # Preform another convolution, but preserve the dimensions by using params (1, 1, 1)
     spatial_action_policy = layers.conv2d(state_representation,
                                           num_outputs=1,

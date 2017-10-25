@@ -7,7 +7,6 @@ import sys
 import time
 import importlib
 import threading
-import multiprocessing as mp
 import psutil
 
 from pysc2 import maps
@@ -31,7 +30,8 @@ flags.DEFINE_integer("max_steps", 10000000, "Total steps for training.")
 flags.DEFINE_integer("snapshot_step", 1000, "Step for snapshot.")
 flags.DEFINE_string("snapshot_path", "./snapshot/", "Path for snapshot.")
 flags.DEFINE_string("log_path", "./log/", "Path for log.")
-flags.DEFINE_string("device", "0", "Device for training.")
+flags.DEFINE_integer("num_gpus", 1, "Number of GPUs for training")
+flags.DEFINE_integer("num_cpus", 1, "Number of CPUs for training")
 
 flags.DEFINE_string("map", "DefeatRavagersMedivacPickup", "Name of a map to use.")
 flags.DEFINE_bool("render", False, "Whether to render with pygame.")
@@ -44,7 +44,7 @@ flags.DEFINE_string("net", "fcn", "atari, fcn, or innovationdx")
 flags.DEFINE_enum("agent_race", None, sc2_env.races.keys(), "Agent's race.")
 flags.DEFINE_enum("bot_race", None, sc2_env.races.keys(), "Bot's race.")
 flags.DEFINE_enum("difficulty", None, sc2_env.difficulties.keys(), "Bot's strength.")
-flags.DEFINE_integer("max_agent_steps", 240, "Total agent steps.")
+flags.DEFINE_integer("max_agent_steps", 480, "Total agent steps.")
 
 flags.DEFINE_bool("profile", False, "Whether to turn on code profiling.")
 flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
@@ -57,11 +57,12 @@ FLAGS(sys.argv)
 if FLAGS.training:
     PARALLEL = FLAGS.parallel
     MAX_AGENT_STEPS = FLAGS.max_agent_steps
-    DEVICE = ['/gpu:' + dev for dev in FLAGS.device.split(',')]
+    DEVICE_GPU = ['/gpu:' + str(gpu) for gpu in range(FLAGS.num_gpus)]
+    DEVICE_CPU = ['/cpu:' + str(cpu) for cpu in range(FLAGS.num_cpus)]
 else:
     PARALLEL = 1
     MAX_AGENT_STEPS = 1e5
-    DEVICE = ['/cpu:0']
+    DEVICE_CPU = ['/cpu:0']
 
 LOG = FLAGS.log_path + FLAGS.map + '/' + FLAGS.net
 SNAPSHOT = FLAGS.snapshot_path + FLAGS.map + '/' + FLAGS.net
@@ -72,9 +73,9 @@ if not os.path.exists(SNAPSHOT):
 
 
 def run_thread(affinity, agent, map_name, visualize):
-    proc = psutil.Process()  # get self pid
-    proc.cpu_affinity(affinity)
-    aff = proc.cpu_affinity()
+    # proc = psutil.Process()  # get self pid
+    # proc.cpu_affinity(affinity)
+    # aff = proc.cpu_affinity()
     with sc2_env.SC2Env(
             map_name=map_name,
             agent_race=FLAGS.agent_race,
@@ -129,7 +130,10 @@ def _main(unused_argv):
     agents = []
     for i in range(PARALLEL):
         agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution)
-        agent.build_model(i > 0, DEVICE[i % len(DEVICE)], FLAGS.net)
+        if FLAGS.training:
+            agent.build_model(i > 0, DEVICE_GPU[i % len(DEVICE_GPU)], FLAGS.net)
+        else:
+            agent.build_model(i > 0, DEVICE_CPU[i % len(DEVICE_CPU)], FLAGS.net)
         agents.append(agent)
 
     config = tf.ConfigProto(allow_soft_placement=True)
@@ -147,14 +151,12 @@ def _main(unused_argv):
 
     # Run threads
     threads = []
-    for i in range(PARALLEL - 1):
-        t = threading.Thread(target=run_thread, args=([i % len(DEVICE)], agents[i], FLAGS.map, False))
+    for i in range(PARALLEL):
+        t = threading.Thread(target=run_thread, args=([i % len(DEVICE_CPU)], agents[i], FLAGS.map, False))
         threads.append(t)
         t.daemon = True
         t.start()
         time.sleep(1)
-
-    run_thread([PARALLEL-1], agents[-1], FLAGS.map, FLAGS.render)
 
     for t in threads:
         t.join()
