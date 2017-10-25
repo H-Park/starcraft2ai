@@ -43,9 +43,9 @@ class A3CAgent(object):
                 assert tf.get_variable_scope().reuse
 
             # Set inputs of networks
-            self.minimap = tf.placeholder(tf.int32, [None, U.minimap_channel(), self.msize, self.msize],
+            self.minimap = tf.placeholder(tf.float32, [None, U.minimap_channel(), self.msize, self.msize],
                                           name='minimap')
-            self.screen = tf.placeholder(tf.int32, [None, U.screen_channel(), self.ssize, self.ssize], name='screen')
+            self.screen = tf.placeholder(tf.float32, [None, U.screen_channel(), self.ssize, self.ssize], name='screen')
             self.info = tf.placeholder(tf.float32, [None, self.ssize * self.ssize], name='info')
 
             # Build networks
