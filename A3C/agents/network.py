@@ -93,10 +93,14 @@ def build_innovationdx(minimap, screen, info, ssize, num_action):
 
 def build_atari(minimap, screen, info, msize, ssize, num_action):
     # Extract features
-    m_embedded = layers.embed_sequence(tf.transpose(minimap, [0, 2, 3, 1]),
-                                       embed_dim=4,
-                                       vocab_size=MINIMAP_FEATURES.player_relative.scale,
-                                       scope="m_embedded")
+    m_onehot = layers.one_hot_encoding(tf.transpose(minimap, [0, 2, 3, 1]),
+                                       num_classes=MINIMAP_FEATURES.player_relative.scale,
+                                       scope="m_onehot")
+    m_embedded = layers.conv2d(m_onehot,
+                               num_outputs=MINIMAP_FEATURES.player_relative.scale,
+                               kernel_size=1,
+                               stride=1,
+                               scope="m_embedded")
     mconv1 = layers.conv2d(m_embedded,
                            num_outputs=16,
                            kernel_size=8,
@@ -107,10 +111,14 @@ def build_atari(minimap, screen, info, msize, ssize, num_action):
                            kernel_size=4,
                            stride=2,
                            scope='mconv2')
-    s_embedded = layers.embed_sequence(tf.transpose(screen, [0, 2, 3, 1]),
-                                       embed_dim=4,
-                                       vocab_size=SCREEN_FEATURES.player_relative.scale,
-                                       scope="s_embedded")
+    s_onehot = layers.one_hot_encoding(tf.transpose(minimap, [0, 2, 3, 1]),
+                                       num_classes=SCREEN_FEATURES.player_relative.scale,
+                                       scope="s_onehot")
+    s_embedded = layers.conv2d(s_onehot,
+                               num_outputs=SCREEN_FEATURES.player_relative.scale,
+                               kernel_size=1,
+                               stride=1,
+                               scope="s_embedded")
     sconv1 = layers.conv2d(s_embedded,
                            num_outputs=16,
                            kernel_size=8,
@@ -161,11 +169,7 @@ def build_atari(minimap, screen, info, msize, ssize, num_action):
 
 def build_fcn(minimap, screen, info, msize, ssize, num_action):
     # Extract features, while preserving the dimensions
-    m_embedded = layers.embed_sequence(tf.transpose(minimap, [0, 2, 3, 1]),
-                                       embed_dim=4,
-                                       vocab_size=MINIMAP_FEATURES.player_relative.scale,
-                                       scope="m_embedded")
-    mconv1 = layers.conv2d(m_embedded,
+    mconv1 = layers.conv2d(tf.transpose(minimap, [0, 2, 3, 1]),
                            num_outputs=16,
                            kernel_size=5,
                            stride=1,
@@ -177,11 +181,7 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                            stride=1,
                            padding="SAME",
                            scope='mconv2')
-    s_embedded = layers.embed_sequence(tf.transpose(screen, [0, 2, 3, 1]),
-                                       embed_dim=4,
-                                       vocab_size=SCREEN_FEATURES.player_relative.scale,
-                                       scope="s_embedded")
-    sconv1 = layers.conv2d(s_embedded,
+    sconv1 = layers.conv2d(tf.transpose(screen, [0, 2, 3, 1]),
                            num_outputs=16,
                            kernel_size=5,
                            stride=1,
