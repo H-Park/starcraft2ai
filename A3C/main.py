@@ -7,6 +7,7 @@ import sys
 import time
 import importlib
 import threading
+from multiprocessing import Process
 import psutil
 
 from pysc2 import maps
@@ -30,8 +31,8 @@ flags.DEFINE_integer("max_steps", 10000000, "Total steps for training.")
 flags.DEFINE_integer("snapshot_step", 1000, "Step for snapshot.")
 flags.DEFINE_string("snapshot_path", "./snapshot/", "Path for snapshot.")
 flags.DEFINE_string("log_path", "./log/", "Path for log.")
-flags.DEFINE_integer("num_gpus", 1, "Number of GPUs for training")
-flags.DEFINE_integer("num_cpus", 1, "Number of CPUs for training")
+flags.DEFINE_integer("num_gpus", 16, "Number of GPUs for training")
+flags.DEFINE_integer("num_cpus", 64, "Number of CPUs for training")
 
 flags.DEFINE_string("map", "DefeatRavagersMedivacPickup", "Name of a map to use.")
 flags.DEFINE_bool("render", False, "Whether to render with pygame.")
@@ -48,7 +49,7 @@ flags.DEFINE_integer("max_agent_steps", 480, "Total agent steps.")
 
 flags.DEFINE_bool("profile", False, "Whether to turn on code profiling.")
 flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
-flags.DEFINE_integer("parallel", 4, "How many instances to run in parallel.")
+flags.DEFINE_integer("parallel", 48, "How many instances to run in parallel.")
 flags.DEFINE_bool("save_replay", True, "Whether to save a replay at the end.")
 flags.DEFINE_string("save_dir", "replays/", "Directory where replays will be saved")
 flags.DEFINE_integer("save_replay_frequency", 1000, "Frquency to save a replay")
@@ -73,9 +74,9 @@ if not os.path.exists(SNAPSHOT):
 
 
 def run_thread(affinity, agent, map_name, visualize):
-    # proc = psutil.Process()  # get self pid
-    # proc.cpu_affinity(affinity)
-    # aff = proc.cpu_affinity()
+    proc = psutil.Process()  # get self pid
+    proc.cpu_affinity(affinity)
+    aff = proc.cpu_affinity()
     with sc2_env.SC2Env(
             map_name=map_name,
             agent_race=FLAGS.agent_race,
@@ -156,7 +157,7 @@ def _main(unused_argv):
         threads.append(t)
         t.daemon = True
         t.start()
-        time.sleep(1)
+        #time.sleep(1)
 
     for t in threads:
         t.join()
