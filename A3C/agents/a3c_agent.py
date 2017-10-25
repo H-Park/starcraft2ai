@@ -43,10 +43,10 @@ class A3CAgent(object):
                 assert tf.get_variable_scope().reuse
 
             # Set inputs of networks
-            self.minimap = tf.placeholder(tf.float32, [None, U.minimap_channel(), self.msize, self.msize],
+            self.minimap = tf.placeholder(tf.int32, [None, U.minimap_channel(), self.msize, self.msize],
                                           name='minimap')
-            self.screen = tf.placeholder(tf.float32, [None, U.screen_channel(), self.ssize, self.ssize], name='screen')
-            self.info = tf.placeholder(tf.float32, [None, self.ssize * self.ssize], name='info')
+            self.screen = tf.placeholder(tf.int32, [None, U.screen_channel(), self.ssize, self.ssize], name='screen')
+            self.info = tf.placeholder(tf.float32, [None, self.ssize * self.ssize * 32], name='info')
 
             # Build networks
             net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, len(actions.FUNCTIONS), ntype)
@@ -109,7 +109,7 @@ class A3CAgent(object):
         screen = np.array(obs.observation['screen'], dtype=np.float32)
         screen = np.expand_dims(U.preprocess_screen(screen), axis=0)
         # TODO: only use available actions
-        info = np.zeros([1, self.ssize * self.ssize], dtype=np.float32)
+        info = np.zeros([1, self.ssize * self.ssize * 32], dtype=np.float32)
 
         # let the agent know what it can do
         info[0, obs.observation['available_actions']] = 1
@@ -174,7 +174,7 @@ class A3CAgent(object):
             minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
             screen = np.array(obs.observation['screen'], dtype=np.float32)
             screen = np.expand_dims(U.preprocess_screen(screen), axis=0)
-            info = np.zeros([1, self.ssize * self.ssize], dtype=np.float32)
+            info = np.zeros([1, self.ssize * self.ssize * 32], dtype=np.float32)
 
             # let the agent know what it can do
             info[0, obs.observation['available_actions']] = 1
@@ -219,7 +219,7 @@ class A3CAgent(object):
             minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
             screen = np.array(obs.observation['screen'], dtype=np.float32)
             screen = np.expand_dims(U.preprocess_screen(screen), axis=0)
-            info = np.zeros([1, self.ssize * self.ssize], dtype=np.float32)
+            info = np.zeros([1, self.ssize * self.ssize * 32], dtype=np.float32)
 
             # let the agent know what it can do
             info[0, obs.observation['available_actions']] = 1

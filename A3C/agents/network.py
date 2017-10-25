@@ -154,8 +154,8 @@ def build_atari(minimap, screen, info, msize, ssize, num_action):
 def build_fcn(minimap, screen, info, msize, ssize, num_action):
     # Extract features, while preserving the dimensions
     m_one_hot = layers.one_hot_encoding(tf.transpose(minimap, [0, 2, 3, 1]),
-                                         num_classes=MINIMAP_FEATURES.player_relative.scale
-                                         )[:, :, :, 1:]
+                                        num_classes=MINIMAP_FEATURES.player_relative.scale,
+                                        scope="m_one_hot")[:, :, :, 1:]
     m_pp = layers.conv2d(m_one_hot,
                          num_outputs=1,
                          kernel_size=1,
@@ -175,14 +175,14 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                            padding="SAME",
                            scope='mconv2')
     s_one_hot = layers.one_hot_encoding(tf.transpose(screen, [0, 2, 3, 1]),
-                                         num_classes=SCREEN_FEATURES.player_relative.scale
-                                         )[:, :, :, 1:]
+                                        num_classes=SCREEN_FEATURES.player_relative.scale,
+                                        scope="s_one_hot")[:, :, :, 1:]
     s_pp = layers.conv2d(s_one_hot,
                          num_outputs=1,
                          kernel_size=1,
                          stride=1,
                          padding="SAME",
-                         scope='m_pp')
+                         scope='s_pp')
     sconv1 = layers.conv2d(s_pp,
                            num_outputs=16,
                            kernel_size=5,
@@ -197,7 +197,7 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                            scope='sconv2')
 
     # Create the state representation by concatenating on the channel axis
-    state_representation = tf.concat([mconv2, sconv2, tf.reshape(info, [-1, ssize, ssize, 1])], axis=3)
+    state_representation = tf.concat([mconv2, sconv2, tf.reshape(info, [1, ssize, ssize, 1, 32])], axis=3)
 
     # Preform another convolution, but preserve the dimensions by using params (1, 1, 1)
     spatial_action_policy = layers.conv2d(state_representation,
@@ -206,7 +206,11 @@ def build_fcn(minimap, screen, info, msize, ssize, num_action):
                                           stride=1,
                                           activation_fn=None,
                                           scope='spatial_feat')
-    spatial_action = tf.nn.softmax(layers.flatten(spatial_action_policy))
+    spatal_action_fc = layers.fully_connected(layers.flatten(spatial_action_policy),
+                                              num_outputs=4096,
+                                              activation_fn=tf.nn.relu,
+                                              scope='spatal_action_fc')
+    spatial_action = tf.nn.softmax(layers.flatten(spatal_action_fc))
 
     feat_fc = layers.fully_connected(layers.flatten(state_representation),
                                      num_outputs=256,
