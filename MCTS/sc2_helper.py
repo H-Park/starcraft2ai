@@ -5,7 +5,7 @@ from sc2.player import Bot, Computer
 from sc2.constants import *
 from terran_bot import TerranBot
 
-run_game(maps.get("Abyssal Reef LE"), [
+run_game(maps.get("AbyssalReefLE"), [
     Bot(Race.Terran, TerranBot()),
     Computer(Race.Protoss, Difficulty.Medium)
 ], realtime=False)

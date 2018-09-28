@@ -8,6 +8,8 @@ import sc2
 from sc2 import Race
 from sc2.ids import unit_typeid as sc2_units
 
+from units import get_tech_requirements
+
 
 from units import terran_units, protoss_units, zerg_units
 
@@ -23,23 +25,76 @@ state = None
 units = None
 
 
+def contains(list1, list2):
+    for i in list2:
+        if i not in list1:
+            return False
+    return True
+
+
 # Make a list of all the units needed to get goal_g
 def get_relevant_units(goal):
-    needed_units = [sc2_units.UnitTypeId.SCV, sc2_units.UnitTypeId.SUPPLYDEPOT, sc2_units.UnitTypeId.COMMANDCENTER]
+    needed_units = []
     units = []
     for unit, value in goal.items():
         units.append(unit)
-        needed_units.append(unit)
 
     while len(units) > 0:
+        print("popping a unit off")
         unit = units.pop()
         print(unit)
-        tech_requirement = game_data.units[unit.value].tech_requirement
-        print(tech_requirement)
-        if tech_requirement is not None and tech_requirement not in needed_units:
-            needed_units.append(tech_requirement)
+        tech_requirements = get_tech_requirements(game_data, unit)
+        if len(tech_requirements) == 0:
+            print(str(unit) + " has no tech requirements")
+            print()
+        while len(tech_requirements) > 0:
+            print("Tech requirements for " + str(unit) + " are: ")
+            print(tech_requirements)
+            print("Current Build order: ")
+            print(needed_units)
+            for i in tech_requirements:
+                if i in needed_units:
+                    print(str(i) + " already in build order, removing from tech_requirements")
+                    tech_requirements.remove(i)
+                    continue
+                print("Particular tech requirement unit " + str(i))
+                if i == sc2_units.UnitTypeId.SUPPLYDEPOT and i not in needed_units:
+                    print("Adding " + str(i) + " to build order")
+                    tech_requirements.remove(i)
+                    needed_units.append(i)
+                    continue
+                print("Computing sub_tech_requirements...")
+                sub_tech_requirements = get_tech_requirements(game_data, i)
+                if type(sub_tech_requirements) is list:
+                    for sub_tech_requirement in sub_tech_requirements:
+                        if sub_tech_requirement not in needed_units:
+                            print("Adding " + str(sub_tech_requirement) + " to needed_units")
+                            tech_requirements.append(sub_tech_requirement)
+                else:
+                    if sub_tech_requirements not in needed_units:
+                        print("Adding " + str(sub_tech_requirements) + " to needed_units")
+                        tech_requirements.append(sub_tech_requirements)
+                print(needed_units)
+            print()
+    for unit, value in goal.items():
+        needed_units.append(unit)
 
     print(needed_units)
+
+    if sc2_units.UnitTypeId.MARAUDER in needed_units:
+        barrack_index = needed_units.index(sc2_units.UnitTypeId.BARRACKS)
+        needed_units.insert(barrack_index + 1, sc2_units.UnitTypeId.TECHLAB)
+    if sc2_units.UnitTypeId.SIEGETANK in needed_units:
+        factory_index = needed_units.index(sc2_units.UnitTypeId.FACTORY)
+        needed_units.insert(factory_index+1, sc2_units.UnitTypeId.TECHLAB)
+    if sc2_units.UnitTypeId.BATTLECRUISER in needed_units:
+        starport_index = needed_units.index(sc2_units.UnitTypeId.STARPORT)
+        needed_units.insert(starport_index+1, sc2_units.UnitTypeId.TECHLAB)
+
+    print(needed_units)
+    print()
+    import sys
+    sys.exit()
     return needed_units
 
 
@@ -78,7 +133,7 @@ class MCTS(object):
 
     # Create a straight forward build order
     def get_basic_build_order(self, initial_state, goal):
-        pass
+        return get_relevant_units(goal)
 
 
 class State(object):

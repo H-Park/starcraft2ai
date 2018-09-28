@@ -27,7 +27,7 @@ class TerranBot(sc2.BotAI):
         
         start = time.time()
         mcts = MCTS(self.race, self._game_data, self.state)
-        optimal_build_order = mcts.find_build_order(input_units, goal)
+        optimal_build_order = mcts.get_basic_build_order(input_units, goal)
         end = time.time()
         print("Total MCTS Time: " + str(end - start))
 
