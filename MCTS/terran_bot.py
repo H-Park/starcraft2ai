@@ -21,7 +21,7 @@ class TerranBot(sc2.BotAI):
                 input_units[unit] = 1
             else:
                 input_units[unit] += 1
-        goal = deepcopy(input_units)
+        goal = dict()
         goal[sc2_units.UnitTypeId.MARINE] = 5
         goal[sc2_units.UnitTypeId.BATTLECRUISER] = 2
         
@@ -30,6 +30,8 @@ class TerranBot(sc2.BotAI):
         optimal_build_order = mcts.get_basic_build_order(input_units, goal)
         end = time.time()
         print("Total MCTS Time: " + str(end - start))
+
+        quit()
 
     # Create various high level snapshots of the current stae of the game
     # Friendly units, enemy units, friendly current resources, upgrades.

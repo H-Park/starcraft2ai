@@ -1,5 +1,4 @@
 from sc2.ids import unit_typeid as sc2_units
-from sc2.game_data import UnitTypeData
 
 terran_buildings = {
     sc2_units.UnitTypeId.REFINERY, sc2_units.UnitTypeId.SUPPLYDEPOT, sc2_units.UnitTypeId.COMMANDCENTER,
