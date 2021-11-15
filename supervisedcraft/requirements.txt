@@ -1,0 +1,10 @@
+future
+numpy
+protobuf
+pystream_protobuf
+PySC2
+python_gflags
+requests
+s2clientprotocol
+scipy
+tqdm
